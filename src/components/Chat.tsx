@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../contexts/ChatContext';
 
-const Chat = () => {
+interface ChatProps {
+  embedded?: boolean;
+}
+
+const Chat: React.FC<ChatProps> = ({ embedded = false }) => {
   const { messages, isLoading, products, sendMessage } = useChat();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -19,10 +23,19 @@ const Chat = () => {
     setInput('');
   };
 
+  // Adjust height based on embedded mode
+  const containerClass = embedded ? 'h-full' : 'min-h-screen';
+  
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col ${containerClass} bg-white`}>
       {/* Chat messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${embedded ? 'max-h-[calc(100vh-60px)]' : ''}`}>
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex justify-center mb-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="text-center text-gray-500 my-8">
             <p>Start a conversation with the shop assistant</p>

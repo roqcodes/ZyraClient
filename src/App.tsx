@@ -5,6 +5,7 @@ import './App.css';
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Install = lazy(() => import('./pages/Install'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
 
 // Components
 const Layout = lazy(() => import('./components/Layout'));
@@ -127,6 +128,18 @@ function AppRoutes() {
                 </Layout>
               </Suspense>
             </ProtectedRoute>
+          } 
+        />
+        
+        {/* Chat route */}
+        <Route 
+          path="/chat" 
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center min-h-screen">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>}>
+              <ChatPage />
+            </Suspense>
           } 
         />
         
