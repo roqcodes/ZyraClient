@@ -47,7 +47,9 @@ export default function AuthCallback() {
           
           // Force window location change instead of using React Router
           // This ensures a complete refresh and state reset
-          window.location.href = '/dashboard';
+          // Use full URL path to ensure proper redirect without 404
+          const baseUrl = window.location.origin;
+          window.location.href = `${baseUrl}/dashboard`;
         } else {
           console.error('AuthCallback: Authentication unsuccessful', response.data);
           throw new Error(response.data.error || 'Authentication failed');
