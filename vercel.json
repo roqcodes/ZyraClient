@@ -21,22 +21,20 @@
       "destination": "/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
-  "routes": [
+      "source": "/api/:path*",
+      "destination": "https://primate-perfect-haddock.ngrok-free.app/api/:path*"
+    },
     {
-      "src": "/chat-widget.js",
-      "dest": "https://your-ngrok-url.ngrok.io/chat-widget.js",
+      "source": "/chat-widget.js",
+      "destination": "https://primate-perfect-haddock.ngrok-free.app/chat-widget.js",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable",
         "Access-Control-Allow-Origin": "*"
       }
     },
     {
-      "src": "/api/(.*)",
-      "dest": "https://your-ngrok-url.ngrok.io/api/$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "cleanUrls": true,
