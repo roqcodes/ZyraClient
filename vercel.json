@@ -1,32 +1,16 @@
 {
   "rewrites": [
     {
-      "source": "/install",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/auth/callback",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/chat",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/app",
-      "destination": "/index.html"
-    },
-    {
       "source": "/api/:path*",
       "destination": "https://primate-perfect-haddock.ngrok-free.app/api/:path*"
     },
     {
       "source": "/chat-widget.js",
       "destination": "https://primate-perfect-haddock.ngrok-free.app/chat-widget.js"
+    },
+    {
+      "source": "/chat",
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
@@ -46,6 +30,23 @@
         {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/chat",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-Requested-With, Content-Type, Accept"
         }
       ]
     },
