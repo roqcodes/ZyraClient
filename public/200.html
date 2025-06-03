@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZyraChat App</title>
+  <script>
+    // This script handles all possible 404 errors by redirecting to the main app
+    (function() {
+      // Save the current URL and path
+      var currentPath = window.location.pathname;
+      var searchParams = window.location.search;
+      var hashFragment = window.location.hash;
+      
+      // Get the base URL (protocol + hostname)
+      var baseUrl = window.location.origin;
+      
+      // If we're on a direct path that should be handled by the SPA
+      // and we're not already at the root, redirect to the root with the path preserved
+      if (currentPath !== '/' && !window.location.href.includes('/index.html')) {
+        // Preserve all query parameters and hash fragments
+        window.location.href = baseUrl + '/index.html' + searchParams + hashFragment;
+      }
+    })();
+  </script>
+</head>
+<body>
+  <script>
+    // This will redirect to the main app index.html
+    window.location.href = window.location.origin + '/index.html' + window.location.search + window.location.hash;
+  </script>
+</body>
+</html>
