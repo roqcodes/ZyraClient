@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     base: isProduction ? '/' : '/',
+    define: {
+      'process.env': { ...process.env, ...env },
+      'import.meta.env.MODE': JSON.stringify(mode),
+    },
     server: {
       port: 5173,
       strictPort: true,
@@ -37,10 +41,6 @@ export default defineConfig(({ mode }) => {
         },
       },
       chunkSizeWarningLimit: 1000, // 1MB
-    },
-    define: {
-      'process.env': env,
-      'import.meta.env.MODE': JSON.stringify(mode),
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'react-router-dom'],

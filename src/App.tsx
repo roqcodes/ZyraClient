@@ -1,5 +1,5 @@
 import { useEffect, Suspense, lazy } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 
 // Lazy load pages for better performance
@@ -60,32 +60,35 @@ function AppRoutes() {
   
   // Check for shop parameter in URL and handle redirection
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const shop = urlParams.get('shop');
+    const currentPath = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
+    const shop = searchParams.get('shop');
     
-    console.log('Current path:', location.pathname);
+    console.log('Current path:', currentPath);
     console.log('Shop param:', shop);
     console.log('Is authenticated:', isAuthenticated);
     
-    // If shop parameter exists and we're on the root path, store it and redirect
+    // If shop parameter exists, store it in localStorage
     if (shop) {
       console.log('Shop parameter found, storing in localStorage');
       localStorage.setItem('shopDomain', shop);
       
-      // Force redirect to dashboard if we have a shop parameter (likely coming from OAuth)
-      if (location.pathname === '/') {
+      // If we're on the root path, redirect to dashboard
+      if (currentPath === '/') {
         console.log('Redirecting to dashboard after OAuth');
         navigate('/dashboard', { replace: true });
         return;
       }
     }
     
-    // Special case for root path without shop parameter
-    if (location.pathname === '/' && !shop) {
+    // Handle root path without shop parameter
+    if (currentPath === '/') {
       const storedShop = localStorage.getItem('shopDomain');
       if (storedShop) {
         console.log('No shop in URL but found in localStorage, redirecting to dashboard');
         navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/install', { replace: true });
       }
     }
   }, [location, isAuthenticated, navigate]);
