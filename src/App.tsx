@@ -1,26 +1,33 @@
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, Suspense, lazy } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 
-// Pages
-import Dashboard from './pages/Dashboard';
-import Install from './pages/Install';
+// Lazy load pages for better performance
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Install = lazy(() => import('./pages/Install'));
 
 // Components
-import Layout from './components/Layout';
-import ChatWidget from './components/ChatWidget';
+const Layout = lazy(() => import('./components/Layout'));
+const ChatWidget = lazy(() => import('./components/ChatWidget'));
 
 // Contexts
 import { ShopProvider, useShop } from './contexts/ShopContext';
 import { ChatProvider } from './contexts/ChatContext';
+
+// Loading component
+const Loading = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 // Auth guard for protected routes
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useShop();
   const location = useLocation();
   
-  // If still loading, show nothing yet
-  if (isLoading) return null;
+  // If still loading, show loading spinner
+  if (isLoading) return <Loading />;
   
   // If not authenticated, redirect to install page
   if (!isAuthenticated) {
@@ -34,11 +41,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 function AppWrapper() {
   return (
     <Router>
-      <ShopProvider>
-        <ChatProvider>
-          <AppRoutes />
-        </ChatProvider>
-      </ShopProvider>
+      <Suspense fallback={<Loading />}>
+        <ShopProvider>
+          <ChatProvider>
+            <AppRoutes />
+          </ChatProvider>
+        </ShopProvider>
+      </Suspense>
     </Router>
   );
 }
@@ -82,7 +91,7 @@ function AppRoutes() {
   }, [location, isAuthenticated, navigate]);
   
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Routes>
         {/* Home route - redirect based on auth status */}
         <Route 
@@ -95,30 +104,69 @@ function AppRoutes() {
         />
         
         {/* Install page */}
-        <Route path="/install" element={<Install />} />
+        <Route 
+          path="/install" 
+          element={
+            <Suspense fallback={<Loading />}>
+              <Install />
+            </Suspense>
+          } 
+        />
         
         {/* Protected dashboard */}
         <Route 
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Layout>
-                <Dashboard />
-              </Layout>
+              <Suspense fallback={<Loading />}>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </Suspense>
             </ProtectedRoute>
           } 
         />
         
         {/* Auth callback route */}
-        <Route path="/auth/callback" element={<div>Processing authentication...</div>} />
+        <Route 
+          path="/auth/callback" 
+          element={
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p>Processing authentication...</p>
+              </div>
+            </div>
+          } 
+        />
         
         {/* 404 route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route 
+          path="*" 
+          element={
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
+                <p className="text-xl text-gray-600 mb-6">Page not found</p>
+                <button 
+                  onClick={() => navigate('/')}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  Go to Home
+                </button>
+              </div>
+            </div>
+          } 
+        />
       </Routes>
       
       {/* Chat widget - show on authenticated routes and when embedded in Shopify */}
-      {isAuthenticated && (location.pathname !== '/dashboard' || window.self !== window.top) && <ChatWidget />}
-    </>
+      {isAuthenticated && (location.pathname !== '/dashboard' || window.self !== window.top) && (
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
+      )}
+    </div>
   );
 }
 

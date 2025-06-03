@@ -1,14 +1,22 @@
 {
-  "name": "frontend",
+  "name": "zyra-chat-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "start": "vite preview --port 3000 --host",
+    "vercel-build": "npm run build"
   },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "browserslist": [
+    "defaults"
+  ],
   "dependencies": {
     "@supabase/supabase-js": "^2.49.9",
     "@types/react-router-dom": "^5.3.3",
