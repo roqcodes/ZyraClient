@@ -135,13 +135,11 @@ function AppRoutes() {
       return;
     }
     
-    // PRIORITY 4: If shop exists in localStorage, always redirect to dashboard
-    if (storedShop) {
-      // But don't redirect if already on dashboard
-      if (currentPath !== '/dashboard') {
-        console.log('Shop found in localStorage, redirecting to dashboard');
-        navigate('/dashboard', { replace: true });
-      }
+    // PRIORITY 3: If shop exists in localStorage and not on dashboard, redirect to dashboard
+    if (storedShop && currentPath !== '/dashboard') {
+      console.log('Stored shop found, redirecting to dashboard from', currentPath);
+      // Force a hard redirect to dashboard
+      window.location.href = window.location.origin + '/dashboard';
       return;
     }
     

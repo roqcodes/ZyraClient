@@ -52,14 +52,19 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
             
             // Always use the absolute backend URL to avoid routing issues
             const backendUrl = 'https://primate-perfect-haddock.ngrok-free.app';
-            const response = await fetch(`${backendUrl}/api/shop?shop=${shopDomain}`);
             
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`Failed to fetch shop data: ${response.status} ${errorText}`);
-            }
+            // Use axios instead of fetch for better error handling and CORS support
+            const axios = (await import('axios')).default;
+            const { data } = await axios.get(`${backendUrl}/api/shop`, {
+              params: { shop: shopDomain },
+              withCredentials: true, // Important for cookies
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
             
-            const data = await response.json();
+            // Data comes directly from axios
             console.log('Shop data:', data);
             
             // Store shop data and authentication state
@@ -73,8 +78,21 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
           } catch (err: any) {
             console.error('Error fetching shop data:', err);
             setError(err.message);
-            setShop(null);
-            return null;
+            
+            // FALLBACK: If we have a shop domain but API fails, create a minimal shop object
+            // This ensures the user stays authenticated even if API calls fail
+            if (shopDomain) {
+              console.log('Using fallback authentication with shop domain:', shopDomain);
+              const fallbackShop = {
+                shop_domain: shopDomain,
+                installed_at: new Date().toISOString()
+              };
+              setShop(fallbackShop);
+              return fallbackShop;
+            } else {
+              setShop(null);
+              return null;
+            }
           } finally {
             setIsLoading(false);
           }
