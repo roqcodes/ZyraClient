@@ -24,6 +24,48 @@ const Loading = () => (
   </div>
 );
 
+// Special component to handle /app routes coming from Shopify auth
+const AppRedirect = () => {
+  const { setShop } = useShop();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Extract shop parameter if present
+    const searchParams = new URLSearchParams(location.search);
+    const shopParam = searchParams.get('shop');
+    
+    console.log('AppRedirect: Handling /app route redirect');
+    console.log('Current location:', location.pathname);
+    console.log('Search params:', location.search);
+    console.log('Shop param:', shopParam);
+    
+    // If shop parameter exists, save it and redirect to dashboard
+    if (shopParam) {
+      console.log('AppRedirect: Shop parameter found, saving to localStorage');
+      localStorage.setItem('shopDomain', shopParam);
+      setShop(shopParam);
+      
+      // Redirect to dashboard with full URL
+      const baseUrl = window.location.origin;
+      window.location.href = `${baseUrl}/dashboard`;
+    } else {
+      // No shop parameter, check if we have one in localStorage
+      const storedShop = localStorage.getItem('shopDomain');
+      if (storedShop) {
+        console.log('AppRedirect: Shop found in localStorage, redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        // No shop in localStorage either, redirect to install
+        console.log('AppRedirect: No shop found, redirecting to install');
+        navigate('/install', { replace: true });
+      }
+    }
+  }, [location, navigate, setShop]);
+  
+  return <Loading />;
+};
+
 // Auth guard for protected routes
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useShop();
@@ -172,17 +214,23 @@ function AppRoutes() {
           } 
         />
         
-        {/* App route - handles both / and /app */}
+        {/* App route - handles both / and /app with or without query params */}
         <Route 
           path="/app" 
           element={
-            <ProtectedRoute>
-              <Suspense fallback={<Loading />}>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </Suspense>
-            </ProtectedRoute>
+            <Suspense fallback={<Loading />}>
+              <AppRedirect />
+            </Suspense>
+          } 
+        />
+        
+        {/* App subpaths */}
+        <Route 
+          path="/app/*" 
+          element={
+            <Suspense fallback={<Loading />}>
+              <AppRedirect />
+            </Suspense>
           } 
         />
         
