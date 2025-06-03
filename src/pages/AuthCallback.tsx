@@ -13,26 +13,47 @@ export default function AuthCallback() {
     const hmac = searchParams.get('hmac');
     const state = searchParams.get('state');
 
+    console.log('AuthCallback: Processing authentication callback');
+    console.log('Shop:', shop);
+    console.log('Code:', code ? 'Present' : 'Missing');
+
+    // Always ensure shop is stored in localStorage if available
+    if (shop) {
+      console.log('AuthCallback: Setting shop in localStorage');
+      localStorage.setItem('shopDomain', shop);
+    }
+
     const verifyAuth = async () => {
       try {
+        // Log the API call we're about to make
+        console.log(`AuthCallback: Calling API at ${API_BASE_URL}/auth/callback`);
+        
         // Verify the OAuth callback with the backend
         const response = await axios.get(`${API_BASE_URL}/auth/callback`, {
           params: { code, shop, hmac, state },
           withCredentials: true,
         });
 
+        console.log('AuthCallback: Got response', response.data);
+
         // If verification is successful, redirect to the dashboard
         if (response.data.success) {
+          console.log('AuthCallback: Authentication successful, redirecting to dashboard');
+          
           // Store the shop domain in localStorage for future use
           if (shop) {
             localStorage.setItem('shopDomain', shop);
           }
-          navigate('/dashboard');
+          
+          // Force window location change instead of using React Router
+          // This ensures a complete refresh and state reset
+          window.location.href = '/dashboard';
         } else {
+          console.error('AuthCallback: Authentication unsuccessful', response.data);
           throw new Error(response.data.error || 'Authentication failed');
         }
       } catch (error) {
-        console.error('Error during authentication:', error);
+        console.error('AuthCallback: Error during authentication:', error);
         navigate('/error', { 
           state: { 
             error: 'Failed to authenticate with Shopify',

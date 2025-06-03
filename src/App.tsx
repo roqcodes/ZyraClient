@@ -6,8 +6,8 @@ import './App.css';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Install = lazy(() => import('./pages/Install'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
-const AuthCallback = lazy(() => import('./pages/AuthCallback'));
-const ErrorPage = lazy(() => import('./pages/ErrorPage'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback.tsx'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage.tsx'));
 
 // Components
 const Layout = lazy(() => import('./components/Layout'));
@@ -57,44 +57,58 @@ function AppWrapper() {
 
 // Main app with routes
 function AppRoutes() {
-  const { isAuthenticated } = useShop();
+  const { isAuthenticated, setShop } = useShop();
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Check for shop parameter in URL and handle redirection
+  // Global redirection logic that runs on every render
   useEffect(() => {
     const currentPath = location.pathname;
     const searchParams = new URLSearchParams(location.search);
-    const shop = searchParams.get('shop');
+    const shopParam = searchParams.get('shop');
+    const storedShop = localStorage.getItem('shopDomain');
     
     console.log('Current path:', currentPath);
-    console.log('Shop param:', shop);
+    console.log('Shop param:', shopParam);
+    console.log('Stored shop:', storedShop);
     console.log('Is authenticated:', isAuthenticated);
     
-    // If shop parameter exists, store it in localStorage
-    if (shop) {
+    // PRIORITY 1: Always save shop param to localStorage if available
+    if (shopParam) {
       console.log('Shop parameter found, storing in localStorage');
-      localStorage.setItem('shopDomain', shop);
-      
-      // If we're on the root path, redirect to dashboard
-      if (currentPath === '/') {
-        console.log('Redirecting to dashboard after OAuth');
-        navigate('/dashboard', { replace: true });
-        return;
-      }
+      localStorage.setItem('shopDomain', shopParam);
+      // Also update the context immediately
+      setShop(shopParam);
     }
     
-    // Handle root path without shop parameter
-    if (currentPath === '/') {
-      const storedShop = localStorage.getItem('shopDomain');
-      if (storedShop) {
-        console.log('No shop in URL but found in localStorage, redirecting to dashboard');
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate('/install', { replace: true });
-      }
+    // PRIORITY 2: Auth callback should be handled by the AuthCallback component
+    if (currentPath === '/auth/callback') {
+      console.log('On auth callback page, letting component handle it');
+      return;
     }
-  }, [location, isAuthenticated, navigate]);
+    
+    // PRIORITY 3: /chat and other special routes should not be redirected
+    if (currentPath === '/chat' || currentPath === '/error') {
+      console.log('On special route, not redirecting');
+      return;
+    }
+    
+    // PRIORITY 4: If shop exists in localStorage, always redirect to dashboard
+    if (storedShop) {
+      // But don't redirect if already on dashboard
+      if (currentPath !== '/dashboard') {
+        console.log('Shop found in localStorage, redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      }
+      return;
+    }
+    
+    // PRIORITY 5: No shop in localStorage, redirect to install
+    if (currentPath !== '/install') {
+      console.log('No shop in localStorage, redirecting to install');
+      navigate('/install', { replace: true });
+    }
+  }, [location.pathname, location.search, navigate, setShop, isAuthenticated]);
   
   return (
     <div className="min-h-screen bg-gray-50">

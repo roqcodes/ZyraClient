@@ -11,6 +11,7 @@ interface ShopData {
 
 interface ShopContextType {
   shop: ShopData | null;
+  setShop: (shopDomain: string) => void;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
@@ -105,10 +106,27 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
     navigate('/?logout=true');
   };
 
+  // Function to manually set shop domain and update state
+  const setShopDomain = (shopDomain: string) => {
+    if (!shopDomain) return;
+    
+    console.log(`Manually setting shop domain: ${shopDomain}`);
+    localStorage.setItem('shopDomain', shopDomain);
+    
+    // Create a minimal shop data object
+    const shopData: ShopData = {
+      shop_domain: shopDomain,
+      installed_at: new Date().toISOString()
+    };
+    
+    setShop(shopData);
+  };
+
   return (
     <ShopContext.Provider
       value={{
         shop,
+        setShop: setShopDomain,
         isLoading,
         isAuthenticated: !!shop,
         error,

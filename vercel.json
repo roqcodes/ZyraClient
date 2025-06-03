@@ -9,7 +9,23 @@
       "destination": "https://primate-perfect-haddock.ngrok-free.app/chat-widget.js"
     },
     {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/install",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/index.html"
+    },
+    {
       "source": "/chat",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/error",
       "destination": "/index.html"
     },
     {
