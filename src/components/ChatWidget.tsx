@@ -5,8 +5,10 @@ import { useShop } from '../contexts/ShopContext';
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { shop } = useShop();
-
-  if (!shop) return null;
+  
+  // Only render if we have shop data or a shop domain in localStorage
+  const shopDomain = shop?.shop_domain || localStorage.getItem('shopDomain');
+  if (!shopDomain) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50">

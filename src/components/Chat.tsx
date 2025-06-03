@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../contexts/ChatContext';
+import { useShop } from '../contexts/ShopContext';
 
 interface ChatProps {
   embedded?: boolean;
@@ -7,8 +8,10 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ embedded = false }) => {
   const { messages, isLoading, products, sendMessage } = useChat();
+  const { shop } = useShop();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const shopDomain = shop?.shop_domain || localStorage.getItem('shopDomain');
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -24,7 +27,12 @@ const Chat: React.FC<ChatProps> = ({ embedded = false }) => {
   };
 
   // Adjust height based on embedded mode
-  const containerClass = embedded ? 'h-full' : 'min-h-screen';
+  const containerClass = embedded ? 'h-full' : 'h-full';
+  
+  // Log shop domain for debugging
+  useEffect(() => {
+    console.log('Chat component initialized with shop domain:', shopDomain);
+  }, [shopDomain]);
   
   return (
     <div className={`flex flex-col ${containerClass} bg-white`}>

@@ -51,11 +51,38 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   
   // Update currentShopDomain when shop changes
   useEffect(() => {
-    if (shop?.shop_domain) {
-      console.log('ShopContext updated, setting shop domain:', shop.shop_domain);
-      setCurrentShopDomain(shop.shop_domain);
+    // Get shop domain from shop context, local storage, or URL params
+    const getShopDomain = () => {
+      // First try from shop context
+      if (shop?.shop_domain) {
+        console.log('Using shop domain from context:', shop.shop_domain);
+        return shop.shop_domain;
+      }
+
+      // Then try from localStorage
+      const storedShop = localStorage.getItem('shopDomain');
+      if (storedShop) {
+        console.log('Using shop domain from localStorage:', storedShop);
+        return storedShop;
+      }
+
+      // Finally try from URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      const shopParam = urlParams.get('shop');
+      if (shopParam) {
+        console.log('Using shop domain from URL parameters:', shopParam);
+        return shopParam;
+      }
+
+      return null;
+    };
+
+    const shopDomain = getShopDomain();
+    if (shopDomain && shopDomain !== currentShopDomain) {
+      console.log('Setting shop domain:', shopDomain);
+      setCurrentShopDomain(shopDomain);
     }
-  }, [shop]);
+  }, [shop, currentShopDomain]);
 
   // Load chat session history if sessionId exists
   useEffect(() => {
@@ -115,6 +142,23 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Save message to Supabase
+  const saveMessageToSupabase = async (message: Message, sessionId: string | null) => {
+    if (!sessionId) return;
+    
+    try {
+      await supabase.from('chat_messages').insert({
+        session_id: sessionId,
+        sender_type: message.sender_type,
+        text: message.text,
+        read: message.read || false
+      });
+    } catch (error) {
+      console.error('Error saving message to Supabase:', error);
+      // Continue even if saving fails - session storage is non-critical
+    }
+  };
+
   // Send message to API
   const sendMessage = async (message: string) => {
     if (!message.trim()) return;
@@ -129,23 +173,43 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    
+    // Save user message to Supabase if we have a session ID
+    if (sessionId) {
+      saveMessageToSupabase(userMessage, sessionId);
+    }
 
     try {
-      // Create EventSource for SSE
-    // Use currentShopDomain from state instead of directly accessing shop?.shop_domain
-    // This ensures we have the most up-to-date shop domain value
-    if (!currentShopDomain) {
-      console.error('No shop domain available. Cannot send message.');
-      console.log('Shop context:', shop);
-      setIsLoading(false);
-      return;
-    }
+      // Ensure we have a valid shop domain 
+      if (!currentShopDomain) {
+        console.error('No shop domain available. Trying fallbacks before failing.');
+        
+        // Try to get shop domain from localStorage as last resort
+        const storedShop = localStorage.getItem('shopDomain');
+        if (storedShop) {
+          console.log('Using shop domain from localStorage as fallback:', storedShop);
+          setCurrentShopDomain(storedShop);
+        } else {
+          console.error('No shop domain available even after fallbacks. Cannot send message.');
+          setIsLoading(false);
+          
+          // Add error message
+          setMessages(prev => [...prev, {
+            sender_type: 'assistant',
+            text: 'Sorry, there was an error connecting to your shop. Please refresh the page and try again.',
+            timestamp: new Date().toISOString(),
+            read: true
+          }]);
+          return;
+        }
+      }
     
     const customerInfo = { id: 'customer-' + Math.random().toString(36).substring(2, 9) }; // Simple customer info
     
-    const params = new URLSearchParams({
-      shop: currentShopDomain
-    }).toString();
+    // Set query parameters
+    const params = new URLSearchParams();
+    params.append('shop', currentShopDomain || '');
+    const queryString = params.toString();
     
     console.log('Sending message with shop domain:', currentShopDomain);
       
@@ -160,7 +224,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         console.log('Switched to HTTPS for API calls:', apiUrl);
       }
       
-      const eventSource = new EventSource(`${apiUrl}/api/chat?${params}`, {
+      const eventSource = new EventSource(`${apiUrl}/api/chat?${queryString}`, {
         withCredentials: true
       });
       
@@ -218,14 +282,42 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               break;
               
             case 'products':
-              setProducts(data.products);
+              if (Array.isArray(data.products) && data.products.length > 0) {
+                console.log(`Received ${data.products.length} products from API`);
+                setProducts(data.products);
+              }
               break;
               
             case 'session_id':
-              setSessionId(data.sessionId);
+              if (data.sessionId && !sessionId) {
+                console.log('Setting new session ID:', data.sessionId);
+                setSessionId(data.sessionId);
+              }
+              break;
+              
+            case 'auth_required':
+              console.warn('Authentication required for tool:', data.tool || 'unknown');
+              eventSource.close();
+              setIsLoading(false);
+              setMessages(prev => [...prev, {
+                sender_type: 'assistant',
+                text: 'Authentication required to access shop data. Please login to your shop account.',
+                timestamp: new Date().toISOString(),
+                read: true
+              }]);
               break;
               
             case 'done':
+              // Save the final assistant message to Supabase
+              if (assistantResponse && sessionId) {
+                const assistantMessage = {
+                  sender_type: 'assistant' as const,
+                  text: assistantResponse,
+                  timestamp: new Date().toISOString(),
+                  read: true
+                };
+                saveMessageToSupabase(assistantMessage, sessionId);
+              }
               eventSource.close();
               setIsLoading(false);
               break;
@@ -234,6 +326,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
               console.error('Error from API:', data.error);
               eventSource.close();
               setIsLoading(false);
+              // Add error message for the user
+              setMessages(prev => [...prev, {
+                sender_type: 'assistant',
+                text: `Sorry, there was an error: ${data.error || 'Unknown error'}. Please try again.`,
+                timestamp: new Date().toISOString(),
+                read: true
+              }]);
               break;
           }
         } catch (error) {
