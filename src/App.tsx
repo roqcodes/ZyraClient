@@ -123,9 +123,9 @@ function AppRoutes() {
       setShop(shopParam);
     }
     
-    // PRIORITY 2: Auth callback should be handled by the AuthCallback component
-    if (currentPath === '/auth/callback') {
-      console.log('On auth callback page, letting component handle it');
+    // CRITICAL: Don't redirect if we're already on special paths
+    if (currentPath === '/auth/callback' || currentPath === '/chat' || currentPath === '/error' || currentPath === '/install') {
+      console.log('On special page, skipping redirects');
       return;
     }
     
@@ -145,8 +145,9 @@ function AppRoutes() {
       return;
     }
     
-    // PRIORITY 5: No shop in localStorage, redirect to install
-    if (currentPath !== '/install') {
+    // PRIORITY 5: No shop in localStorage, redirect to install - but only if we're not on special pages
+    if (currentPath !== '/install' && !storedShop && 
+        !["/", "/auth/callback", "/chat", "/error", "/app"].includes(currentPath)) {
       console.log('No shop in localStorage, redirecting to install');
       navigate('/install', { replace: true });
     }

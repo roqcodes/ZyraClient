@@ -50,9 +50,9 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
             
             console.log(`Fetching shop data for ${shopDomain}`);
             
-            // Determine the correct API URL based on environment
-            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3003';
-            const response = await fetch(`${apiBaseUrl}/api/shop?shop=${shopDomain}`);
+            // Always use the absolute backend URL to avoid routing issues
+            const backendUrl = 'https://primate-perfect-haddock.ngrok-free.app';
+            const response = await fetch(`${backendUrl}/api/shop?shop=${shopDomain}`);
             
             if (!response.ok) {
               const errorText = await response.text();
