@@ -57,7 +57,7 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
             const axios = (await import('axios')).default;
             const { data } = await axios.get(`${backendUrl}/api/shop`, {
               params: { shop: shopDomain },
-              withCredentials: true, // Important for cookies
+              // Removed withCredentials to prevent CORS errors with wildcard origins
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'

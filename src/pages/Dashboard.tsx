@@ -15,18 +15,6 @@ const Dashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-            <p>{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (!shop) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -41,9 +29,17 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Show error as warning banner if present */}
+      {error && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
+          <p className="font-bold">API Warning</p>
+          <p>There was an issue connecting to the API, but you can still use the dashboard: {error}</p>
+        </div>
+      )}
+      
       <header className="mb-8">
         <h1 className="text-2xl font-bold">Shop Assistant Dashboard</h1>
-        <p className="text-gray-600">Manage your AI shop assistant for {shop.shop_domain}</p>
+        <p className="text-gray-600">Manage your AI shop assistant for {shop?.shop_domain || localStorage.getItem('shopDomain')}</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -57,7 +53,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Installed At</p>
-              <p className="font-medium">{new Date(shop.installed_at).toLocaleString()}</p>
+              <p className="font-medium">{shop.installed_at ? new Date(shop.installed_at).toLocaleString() : 'Recently'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Status</p>
