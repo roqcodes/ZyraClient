@@ -232,7 +232,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream'
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           message,
@@ -358,30 +358,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         };
       };
       
-      // After setting up the fetch, call setupEventSource when the eventSource is created
-      setTimeout(() => {
-        if (eventSource) {
-          console.log('Setting up event handlers for SSE connection');
-          setupEventSource();
-        } else {
-          console.warn('EventSource not available after fetch');
-          // Try to create a direct EventSource as fallback
-          try {
-            eventSource = new EventSource(`${apiUrl}/api/stream?sessionId=${sessionId || 'new'}&shop=${encodeURIComponent(currentShopDomain || '')}`);
-            console.log('Created fallback EventSource');
-            setupEventSource();
-          } catch (esError) {
-            console.error('Failed to create fallback EventSource:', esError);
-            setIsLoading(false);
-            setMessages(prev => [...prev, {
-              sender_type: 'assistant',
-              text: 'Sorry, there was an error connecting to the chat service. Please try again.',
-              timestamp: new Date().toISOString(),
-              read: true
-            }]);
-          }
-        }
-      }, 1000); // Give the server time to set up the SSE endpoint
+      // After setting up the fetch, if eventSource is created, set up its handlers
+      if (eventSource) {
+        console.log('Setting up event handlers for SSE connection');
+        setupEventSource();
+      } else {
+        // This block might be reached if the initial POST failed and eventSource was not created
+        // The .catch for the fetch should handle this scenario primarily.
+        console.warn('EventSource not initialized after POST request attempt.');
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setIsLoading(false);
