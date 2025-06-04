@@ -48,7 +48,10 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
             setIsLoading(true);
             setError(null);
             
-            console.log(`Fetching shop data for ${shopDomain}`);
+            // Only log in development environment
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Fetching shop data for ${shopDomain}`);
+            }
             
             // Always use the absolute backend URL to avoid routing issues
             const backendUrl = 'https://primate-perfect-haddock.ngrok-free.app';
@@ -64,8 +67,10 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
               }
             });
             
-            // Data comes directly from axios
-            console.log('Shop data:', data);
+            // Only log in development environment
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Shop data:', data);
+            }
             
             // Store shop data and authentication state
             setShop(data);
@@ -76,13 +81,19 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
             
             return data;
           } catch (err: any) {
-            console.error('Error fetching shop data:', err);
+            // Only log errors in development environment or limit to once
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error fetching shop data:', err);
+            }
             setError(err.message);
             
             // FALLBACK: If we have a shop domain but API fails, create a minimal shop object
             // This ensures the user stays authenticated even if API calls fail
             if (shopDomain) {
-              console.log('Using fallback authentication with shop domain:', shopDomain);
+              // Only log in development environment
+              if (process.env.NODE_ENV === 'development') {
+                console.log('Using fallback authentication with shop domain:', shopDomain);
+              }
               const fallbackShop = {
                 shop_domain: shopDomain,
                 installed_at: new Date().toISOString()
@@ -128,16 +139,25 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
   const setShopDomain = (shopDomain: string) => {
     if (!shopDomain) return;
     
-    console.log(`Manually setting shop domain: ${shopDomain}`);
-    localStorage.setItem('shopDomain', shopDomain);
+    // Store the shop domain in localStorage
+    const currentStoredDomain = localStorage.getItem('shopDomain');
     
-    // Create a minimal shop data object
-    const shopData: ShopData = {
-      shop_domain: shopDomain,
-      installed_at: new Date().toISOString()
-    };
-    
-    setShop(shopData);
+    // Only update and log if the domain is different to prevent loops
+    if (currentStoredDomain !== shopDomain) {
+      // Only log in development environment
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Manually setting shop domain: ${shopDomain}`);
+      }
+      localStorage.setItem('shopDomain', shopDomain);
+      
+      // Create a minimal shop data object
+      const shopData: ShopData = {
+        shop_domain: shopDomain,
+        installed_at: new Date().toISOString()
+      };
+      
+      setShop(shopData);
+    }
   };
 
   return (

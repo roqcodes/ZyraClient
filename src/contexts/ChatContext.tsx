@@ -224,12 +224,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         console.log('Switched to HTTPS for API calls:', apiUrl);
       }
       
-      const eventSource = new EventSource(`${apiUrl}/api/chat?${queryString}`, {
-        withCredentials: true
-      });
+      // Close any existing event source to prevent memory leaks
+      let eventSource: EventSource | null = null;
       
       // Send the message via fetch to initiate the stream
-      fetch(`${apiUrl}/api/chat?${params}`, {
+      fetch(`${apiUrl}/api/chat?${queryString}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,6 +240,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           shopDomain: currentShopDomain,
           customerInfo
         })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        // Now that the POST request is successful, set up the EventSource for streaming
+        console.log('Chat request initiated, setting up SSE connection');
+        eventSource = new EventSource(`${apiUrl}/api/stream?sessionId=${sessionId || 'new'}&shop=${encodeURIComponent(currentShopDomain || '')}`);
       }).catch(error => {
         console.error('Error sending chat message:', error);
         setIsLoading(false);
@@ -250,101 +257,131 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           timestamp: new Date().toISOString(),
           read: true
         }]);
-        eventSource.close();
+        if (eventSource) eventSource.close();
       });
 
       let assistantResponse = '';
 
-      // Handle SSE events
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'text':
-              assistantResponse += data.text;
-              setMessages((prev) => {
-                const newMessages = [...prev];
-                // Update or add assistant message
-                const lastMessage = newMessages[newMessages.length - 1];
-                if (lastMessage && lastMessage.sender_type === 'assistant') {
-                  lastMessage.text = assistantResponse;
-                } else {
-                  newMessages.push({
-                    sender_type: 'assistant',
-                    text: assistantResponse,
-                    timestamp: new Date().toISOString(),
-                    read: false
-                  });
+      // Create event handlers for when the eventSource is initialized
+      const setupEventSource = () => {
+        if (!eventSource) return;
+        
+        // Handle SSE events
+        eventSource.onmessage = (event: MessageEvent) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            switch (data.type) {
+              case 'text':
+                assistantResponse += data.text;
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+                  // Update or add assistant message
+                  const lastMessage = newMessages[newMessages.length - 1];
+                  if (lastMessage && lastMessage.sender_type === 'assistant') {
+                    lastMessage.text = assistantResponse;
+                  } else {
+                    newMessages.push({
+                      sender_type: 'assistant',
+                      text: assistantResponse,
+                      timestamp: new Date().toISOString(),
+                      read: false
+                    });
+                  }
+                  return newMessages;
+                });
+                break;
+                
+              case 'products':
+                if (Array.isArray(data.products) && data.products.length > 0) {
+                  console.log(`Received ${data.products.length} products from API`);
+                  setProducts(data.products);
                 }
-                return newMessages;
-              });
-              break;
-              
-            case 'products':
-              if (Array.isArray(data.products) && data.products.length > 0) {
-                console.log(`Received ${data.products.length} products from API`);
-                setProducts(data.products);
-              }
-              break;
-              
-            case 'session_id':
-              if (data.sessionId && !sessionId) {
-                console.log('Setting new session ID:', data.sessionId);
-                setSessionId(data.sessionId);
-              }
-              break;
-              
-            case 'auth_required':
-              console.warn('Authentication required for tool:', data.tool || 'unknown');
-              eventSource.close();
-              setIsLoading(false);
-              setMessages(prev => [...prev, {
-                sender_type: 'assistant',
-                text: 'Authentication required to access shop data. Please login to your shop account.',
-                timestamp: new Date().toISOString(),
-                read: true
-              }]);
-              break;
-              
-            case 'done':
-              // Save the final assistant message to Supabase
-              if (assistantResponse && sessionId) {
-                const assistantMessage = {
-                  sender_type: 'assistant' as const,
-                  text: assistantResponse,
+                break;
+                
+              case 'session_id':
+                if (data.sessionId && !sessionId) {
+                  console.log('Setting new session ID:', data.sessionId);
+                  setSessionId(data.sessionId);
+                }
+                break;
+                
+              case 'auth_required':
+                console.warn('Authentication required for tool:', data.tool || 'unknown');
+                if (eventSource) eventSource.close();
+                setIsLoading(false);
+                setMessages(prev => [...prev, {
+                  sender_type: 'assistant',
+                  text: 'Authentication required to access shop data. Please login to your shop account.',
                   timestamp: new Date().toISOString(),
                   read: true
-                };
-                saveMessageToSupabase(assistantMessage, sessionId);
-              }
-              eventSource.close();
-              setIsLoading(false);
-              break;
-              
-            case 'error':
-              console.error('Error from API:', data.error);
-              eventSource.close();
-              setIsLoading(false);
-              // Add error message for the user
-              setMessages(prev => [...prev, {
-                sender_type: 'assistant',
-                text: `Sorry, there was an error: ${data.error || 'Unknown error'}. Please try again.`,
-                timestamp: new Date().toISOString(),
-                read: true
-              }]);
-              break;
+                }]);
+                break;
+                
+              case 'done':
+                // Save the final assistant message to Supabase
+                if (assistantResponse && sessionId) {
+                  const assistantMessage = {
+                    sender_type: 'assistant' as const,
+                    text: assistantResponse,
+                    timestamp: new Date().toISOString(),
+                    read: true
+                  };
+                  saveMessageToSupabase(assistantMessage, sessionId);
+                }
+                if (eventSource) eventSource.close();
+                setIsLoading(false);
+                break;
+                
+              case 'error':
+                console.error('Error from API:', data.error);
+                if (eventSource) eventSource.close();
+                setIsLoading(false);
+                // Add error message for the user
+                setMessages(prev => [...prev, {
+                  sender_type: 'assistant',
+                  text: `Sorry, there was an error: ${data.error || 'Unknown error'}. Please try again.`,
+                  timestamp: new Date().toISOString(),
+                  read: true
+                }]);
+                break;
+            }
+          } catch (error) {
+            console.error('Error parsing SSE message:', error);
           }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-        }
-      };
+        };
 
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        eventSource.close();
-        setIsLoading(false);
+        eventSource.onerror = (error: Event) => {
+          console.error('EventSource error:', error);
+          if (eventSource) eventSource.close();
+          setIsLoading(false);
+        };
       };
+      
+      // After setting up the fetch, call setupEventSource when the eventSource is created
+      setTimeout(() => {
+        if (eventSource) {
+          console.log('Setting up event handlers for SSE connection');
+          setupEventSource();
+        } else {
+          console.warn('EventSource not available after fetch');
+          // Try to create a direct EventSource as fallback
+          try {
+            eventSource = new EventSource(`${apiUrl}/api/stream?sessionId=${sessionId || 'new'}&shop=${encodeURIComponent(currentShopDomain || '')}`);
+            console.log('Created fallback EventSource');
+            setupEventSource();
+          } catch (esError) {
+            console.error('Failed to create fallback EventSource:', esError);
+            setIsLoading(false);
+            setMessages(prev => [...prev, {
+              sender_type: 'assistant',
+              text: 'Sorry, there was an error connecting to the chat service. Please try again.',
+              timestamp: new Date().toISOString(),
+              read: true
+            }]);
+          }
+        }
+      }, 1000); // Give the server time to set up the SSE endpoint
     } catch (error) {
       console.error('Error sending message:', error);
       setIsLoading(false);
